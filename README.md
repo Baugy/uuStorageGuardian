@@ -88,18 +88,6 @@ Výstup bude v adresáři `dist/`.
 
 ## Nasazení na cloud
 
-### Vercel
-
-1. Nainstalujte Vercel CLI: `npm i -g vercel`
-2. Přihlaste se: `vercel login`
-3. Deploy: `vercel`
-4. Nebo propojte GitHub repo s Vercel přes webové rozhraní
-
-Vercel automaticky detekuje `vercel.json` konfiguraci.
-
-**Environment proměnné v Vercel:**
-- V Settings → Environment Variables přidejte `VITE_API_BASE_URL` s hodnotou `https://bmc.arimodu.dev`
-
 ### Netlify
 
 Pro detailní instrukce viz **[NETLIFY_SETUP.md](./NETLIFY_SETUP.md)**
