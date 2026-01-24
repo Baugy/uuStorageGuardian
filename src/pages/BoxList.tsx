@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { boxesApi, warehousesApi } from "@/lib/api/client";
-import { BoxStatus } from "@/lib/mockData";
+import { boxesApi } from "@/lib/api/client";
+import { BoxStatus, BoxListDto } from "@/lib/mockData";
 import { toast } from "sonner";
 
 const BoxList = () => {
@@ -35,19 +35,19 @@ const BoxList = () => {
   const { data: boxes = [], isLoading: boxesLoading, error: boxesError } = useQuery({
     queryKey: ['boxes'],
     queryFn: () => boxesApi.getAll(),
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 
-  const { data: warehouses = [] } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: () => warehousesApi.getAll(),
-  });
+  // Extract unique warehouses from boxes data
+  const warehouses = Array.from(
+    new Set(boxes.map((box: BoxListDto) => box.warehouse.name))
+  ).sort();
 
-  const filteredBoxes = boxes.filter((box) => {
+  const filteredBoxes = boxes.filter((box: BoxListDto) => {
     const matchesSearch =
-      box.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      box.id.toString().includes(searchQuery.toLowerCase()) ||
       box.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesWarehouse = warehouseFilter === "all" || box.warehouse === warehouseFilter;
+    const matchesWarehouse = warehouseFilter === "all" || box.warehouse.name === warehouseFilter;
     const matchesStatus = statusFilter === "all" || box.status === statusFilter;
     return matchesSearch && matchesWarehouse && matchesStatus;
   });
@@ -92,27 +92,27 @@ const BoxList = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto py-6 sm:py-8 lg:py-10 px-4 sm:px-6 lg:px-8">
         <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Boxes" }]} />
         
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Box List</h1>
-          <p className="text-muted-foreground">Manage and monitor all storage boxes</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2 bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">Box List</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">Manage and monitor all storage boxes</p>
         </div>
 
-        <Card className="p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
+        <Card className="p-4 sm:p-6 mb-4 sm:mb-6 border-border/50 shadow-depth-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by box ID or name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 border-border/50 bg-card/50"
               />
             </div>
             <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="border-border/50 bg-card/50">
                 <SelectValue placeholder="All Warehouses" />
               </SelectTrigger>
               <SelectContent>
@@ -125,7 +125,7 @@ const BoxList = () => {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="border-border/50 bg-card/50">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -138,68 +138,75 @@ const BoxList = () => {
           </div>
         </Card>
 
-        <Card>
+        <Card className="border-border/50 shadow-depth-md overflow-hidden">
           {boxesLoading ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Box ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Temperature</TableHead>
-                  <TableHead>Humidity</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Measurement</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredBoxes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No boxes found
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50">
+                    <TableHead className="hidden sm:table-cell">Box ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Warehouse</TableHead>
+                    <TableHead className="hidden lg:table-cell">Temperature</TableHead>
+                    <TableHead className="hidden lg:table-cell">Humidity</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden xl:table-cell">Last Measurement</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBoxes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No boxes found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredBoxes.map((box) => (
+                  <TableRow key={box.id} className="border-border/30 hover:bg-card/50 transition-colors">
+                    <TableCell className="font-mono font-medium hidden sm:table-cell">{box.id}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>
+                        <div className="sm:hidden font-mono text-xs text-muted-foreground mb-1">{box.id}</div>
+                        {box.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">{box.warehouse}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{box.currentTemp.toFixed(1)}°C</TableCell>
+                    <TableCell className="hidden lg:table-cell">{box.currentHumidity.toFixed(1)}%</TableCell>
+                    <TableCell>
+                      <StatusBadge status={box.status} />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground hidden xl:table-cell">
+                      {formatTimestamp(box.lastMeasurement)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1 sm:gap-2">
+                        <Button variant="ghost" size="sm" className="hover:bg-primary/10" asChild>
+                          <Link to={`/boxes/${box.id}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="sm" className="hover:bg-primary/10" asChild>
+                          <Link to={`/boxes/${box.id}/history`}>
+                            <History className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="sm" className="hover:bg-primary/10">
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredBoxes.map((box) => (
-                <TableRow key={box.id}>
-                  <TableCell className="font-mono font-medium">{box.id}</TableCell>
-                  <TableCell className="font-medium">{box.name}</TableCell>
-                  <TableCell>{box.warehouse}</TableCell>
-                  <TableCell>{box.currentTemp.toFixed(1)}°C</TableCell>
-                  <TableCell>{box.currentHumidity.toFixed(1)}%</TableCell>
-                  <TableCell>
-                    <StatusBadge status={box.status} />
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatTimestamp(box.lastMeasurement)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/boxes/${box.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/boxes/${box.id}/history`}>
-                          <History className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </Card>
 

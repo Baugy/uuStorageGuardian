@@ -14,10 +14,10 @@ import { devicesApi } from "@/lib/api/client";
 import { Loader2 } from "lucide-react";
 
 interface RemoveDeviceDialogProps {
-  deviceId: string | null;
+  deviceId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (deviceId: string) => void;
+  onConfirm: (deviceId: number) => void;
 }
 
 export const RemoveDeviceDialog = ({
@@ -66,10 +66,10 @@ export const RemoveDeviceDialog = ({
                 <span className="text-sm text-muted-foreground">Name:</span>
                 <span className="font-medium">{device.name}</span>
               </div>
-              {device.assignedBox && (
+              {device.boxId && (
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Assigned Box:</span>
-                  <span className="font-mono">{device.assignedBox}</span>
+                  <span className="font-mono">Box {device.boxId}</span>
                 </div>
               )}
             </CardContent>

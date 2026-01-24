@@ -1,6 +1,84 @@
 import { API_BASE_URL, API_ENDPOINTS, USE_MOCK_DATA } from './config';
-import type { Box, Device, Measurement } from '../mockData';
-import { mockBoxes, mockDevices, mockWarehouses, generateMeasurements } from '../mockData';
+import type {
+  BoxDto,
+  BoxListDto,
+  BoxHistoryDto,
+  DeviceDto,
+  DeviceListDto,
+  BoxCreateDto,
+  BoxUpdateDto,
+  DeviceRegisterDto,
+  DeviceUpdateDto,
+  Measurement
+} from '../mockData';
+import { mockBoxes, mockDevices, generateMeasurements } from '../mockData';
+
+// Authentication types and utilities
+export interface AuthTokens {
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  token_type?: string;
+}
+
+export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+class AuthManager {
+  private static instance: AuthManager;
+  private tokens: AuthTokens | null = null;
+  private readonly TOKEN_KEY = 'bmc_auth_tokens';
+
+  private constructor() {
+    // Load tokens from localStorage on initialization
+    this.loadTokens();
+  }
+
+  static getInstance(): AuthManager {
+    if (!AuthManager.instance) {
+      AuthManager.instance = new AuthManager();
+    }
+    return AuthManager.instance;
+  }
+
+  private loadTokens(): void {
+    try {
+      const stored = localStorage.getItem(this.TOKEN_KEY);
+      if (stored) {
+        this.tokens = JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Failed to load auth tokens:', error);
+      this.clearTokens();
+    }
+  }
+
+  private saveTokens(tokens: AuthTokens): void {
+    this.tokens = tokens;
+    localStorage.setItem(this.TOKEN_KEY, JSON.stringify(tokens));
+  }
+
+  setTokens(tokens: AuthTokens): void {
+    this.saveTokens(tokens);
+  }
+
+  getAccessToken(): string | null {
+    return this.tokens?.access_token || null;
+  }
+
+  clearTokens(): void {
+    this.tokens = null;
+    localStorage.removeItem(this.TOKEN_KEY);
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getAccessToken();
+  }
+}
+
+export const authManager = AuthManager.getInstance();
 
 class ApiError extends Error {
   constructor(
@@ -18,7 +96,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function fetchApi<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit & { requiresAuth?: boolean; useBasicAuth?: boolean }
 ): Promise<T> {
   // If mock data is enabled, skip API call
   if (USE_MOCK_DATA) {
@@ -27,14 +105,31 @@ async function fetchApi<T>(
   }
 
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
+  // Prepare headers
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options?.headers,
+  };
+
+  // Add authentication headers based on endpoint requirements
+  if (options?.requiresAuth !== false) { // Default to requiring auth
+    if (endpoint.includes('/measurement')) {
+      // Measurement endpoint uses Basic auth
+      headers['Authorization'] = 'Basic ' + btoa('Iot_Device:fnwbL1uv0SAj');
+    } else {
+      // Other endpoints use Bearer auth
+      const token = authManager.getAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+  }
+
   try {
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -76,21 +171,33 @@ async function fetchApi<T>(
 }
 
 // Helper to transform date strings to Date objects
-function transformBox(box: any): Box {
+function transformBox(box: BoxDto): BoxDto {
   return {
     ...box,
-    lastMeasurement: typeof box.lastMeasurement === 'string' 
-      ? new Date(box.lastMeasurement) 
-      : box.lastMeasurement,
+    lastMeasurementDate: typeof box.lastMeasurementDate === 'string'
+      ? box.lastMeasurementDate
+      : box.lastMeasurementDate,
   };
 }
 
 // Boxes API
 export const boxesApi = {
-  getAll: async (): Promise<Box[]> => {
+  getAll: async (filters?: {
+    name?: string;
+    status?: string;
+    warehouseId?: string;
+  }): Promise<BoxListDto[]> => {
     try {
-      const data = await fetchApi<Box[]>(API_ENDPOINTS.boxes);
-      return data.map(transformBox);
+      const params = new URLSearchParams();
+      if (filters?.name) params.append('name', filters.name);
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.warehouseId) params.append('warehouseId', filters.warehouseId);
+
+      const query = params.toString();
+      const endpoint = query ? `${API_ENDPOINTS.boxes}?${query}` : API_ENDPOINTS.boxes;
+
+      const data = await fetchApi<BoxListDto[]>(endpoint);
+      return data;
     } catch (error) {
       // Fallback to mock data if API fails or mock is enabled
       if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
@@ -101,9 +208,9 @@ export const boxesApi = {
     }
   },
 
-  getById: async (id: string): Promise<Box> => {
+  getById: async (id: number): Promise<BoxDto> => {
     try {
-      const data = await fetchApi<Box>(API_ENDPOINTS.boxesById(id));
+      const data = await fetchApi<BoxDto>(API_ENDPOINTS.boxesById(id.toString()));
       return transformBox(data);
     } catch (error) {
       // Fallback to mock data if API fails or mock is enabled
@@ -119,10 +226,44 @@ export const boxesApi = {
     }
   },
 
-  update: async (id: string, data: Partial<Box>): Promise<Box> => {
+  create: async (data: BoxCreateDto): Promise<BoxDto> => {
     try {
-      const result = await fetchApi<Box>(API_ENDPOINTS.boxesById(id), {
-        method: 'PUT',
+      const result = await fetchApi<BoxDto>(API_ENDPOINTS.boxes, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return transformBox(result);
+    } catch (error) {
+      // Fallback to mock data if API fails or mock is enabled
+      if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
+        console.log('Using mock data for box creation');
+        const newBox: BoxDto = {
+          id: Date.now(),
+          name: data.name,
+          description: data.description,
+          warehouse: { id: data.warehouseId, name: 'Mock Warehouse', description: '', location: '' },
+          renterId: data.renterId,
+          deviceId: 0,
+          temperature: 20,
+          humidity: 50,
+          status: 'OK',
+          lastMeasurementDate: new Date().toISOString(),
+          lowerHumidityLimit: data.lowerHumidityLimit,
+          upperHumidityLimit: data.upperHumidityLimit,
+          lowerTemperatureLimit: data.lowerTemperatureLimit,
+          upperTemperatureLimit: data.upperTemperatureLimit,
+        };
+        mockBoxes.push(newBox);
+        return newBox;
+      }
+      throw error;
+    }
+  },
+
+  update: async (id: number, data: BoxUpdateDto): Promise<BoxDto> => {
+    try {
+      const result = await fetchApi<BoxDto>(API_ENDPOINTS.boxesById(id.toString()), {
+        method: 'PATCH',
         body: JSON.stringify(data),
       });
       return transformBox(result);
@@ -141,25 +282,41 @@ export const boxesApi = {
     }
   },
 
-  getHistory: async (
-    id: string,
-    hours?: number
-  ): Promise<Measurement[]> => {
+  delete: async (id: number): Promise<void> => {
     try {
-      const params = hours ? `?hours=${hours}` : '';
-      const data = await fetchApi<Measurement[]>(
-        `${API_ENDPOINTS.boxesHistory(id)}${params}`
+      return await fetchApi<void>(API_ENDPOINTS.boxesById(id.toString()), {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      // Fallback to mock data if API fails or mock is enabled
+      if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
+        console.log('Using mock data for box deletion:', id);
+        const index = mockBoxes.findIndex(b => b.id === id);
+        if (index !== -1) {
+          mockBoxes.splice(index, 1);
+        }
+        return;
+      }
+      throw error;
+    }
+  },
+
+  getHistory: async (
+    id: number,
+    dateFrom: Date,
+    dateTo: Date
+  ): Promise<BoxHistoryDto[]> => {
+    try {
+      const params = `?dateFrom=${dateFrom.toISOString()}&dateTo=${dateTo.toISOString()}`;
+      const data = await fetchApi<BoxHistoryDto[]>(
+        `${API_ENDPOINTS.boxesHistory(id.toString())}${params}`
       );
-      // Transform dates from strings to Date objects if needed
-      return data.map((m) => ({
-        ...m,
-        timestamp: typeof m.timestamp === 'string' ? new Date(m.timestamp) : m.timestamp,
-      }));
+      return data;
     } catch (error) {
       // Fallback to mock data if API fails or mock is enabled
       if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
         console.log('Using mock data for box history:', id);
-        return generateMeasurements(id, hours || 24);
+        return generateMeasurements(id.toString(), 24);
       }
       throw error;
     }
@@ -167,21 +324,21 @@ export const boxesApi = {
 };
 
 // Helper to transform device dates
-function transformDevice(device: any): Device {
+function transformDevice(device: DeviceDto): DeviceDto {
   return {
     ...device,
-    lastSignal: typeof device.lastSignal === 'string' 
-      ? new Date(device.lastSignal) 
-      : device.lastSignal,
+    lastMeasurementDate: typeof device.lastMeasurementDate === 'string'
+      ? device.lastMeasurementDate
+      : device.lastMeasurementDate,
   };
 }
 
 // Devices API
 export const devicesApi = {
-  getAll: async (): Promise<Device[]> => {
+  getAll: async (): Promise<DeviceListDto[]> => {
     try {
-      const data = await fetchApi<Device[]>(API_ENDPOINTS.devices);
-      return data.map(transformDevice);
+      const data = await fetchApi<DeviceListDto[]>(API_ENDPOINTS.devices);
+      return data;
     } catch (error) {
       // Fallback to mock data if API fails or mock is enabled
       if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
@@ -192,9 +349,9 @@ export const devicesApi = {
     }
   },
 
-  getById: async (id: string): Promise<Device> => {
+  getById: async (id: number): Promise<DeviceDto> => {
     try {
-      const data = await fetchApi<Device>(API_ENDPOINTS.devicesById(id));
+      const data = await fetchApi<DeviceDto>(API_ENDPOINTS.devicesById(id.toString()));
       return transformDevice(data);
     } catch (error) {
       // Fallback to mock data if API fails or mock is enabled
@@ -210,26 +367,24 @@ export const devicesApi = {
     }
   },
 
-  create: async (data: Partial<Device>): Promise<Device> => {
+  create: async (data: DeviceRegisterDto, options?: { requiresAuth?: boolean }): Promise<DeviceDto> => {
     try {
-      const result = await fetchApi<Device>(API_ENDPOINTS.devices, {
+      const result = await fetchApi<DeviceDto>(API_ENDPOINTS.devices, {
         method: 'POST',
         body: JSON.stringify(data),
+        ...options,
       });
       return transformDevice(result);
     } catch (error) {
       // Fallback to mock data if API fails or mock is enabled
       if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
         console.log('Using mock data for device creation');
-        const newDevice: Device = {
-          id: data.id || `DEV-${Date.now()}`,
-          name: data.name || 'New Device',
-          type: data.type || 'Temperature',
-          assignedBox: data.assignedBox,
-          warehouse: data.warehouse || 'Warehouse A',
-          status: 'online',
-          batteryLevel: 100,
-          lastSignal: new Date(),
+        const newDevice: DeviceDto = {
+          id: Date.now(),
+          name: data.name,
+          description: data.description,
+          boxId: 0,
+          lastMeasurementDate: new Date().toISOString(),
         };
         mockDevices.push(newDevice);
         return newDevice;
@@ -238,9 +393,31 @@ export const devicesApi = {
     }
   },
 
-  delete: async (id: string): Promise<void> => {
+  update: async (id: number, data: DeviceUpdateDto): Promise<DeviceDto> => {
     try {
-      return await fetchApi<void>(API_ENDPOINTS.devicesById(id), {
+      const result = await fetchApi<DeviceDto>(API_ENDPOINTS.devicesById(id.toString()), {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+      return transformDevice(result);
+    } catch (error) {
+      // Fallback to mock data if API fails or mock is enabled
+      if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
+        console.log('Using mock data for device update:', id);
+        const device = mockDevices.find(d => d.id === id);
+        if (!device) {
+          throw new ApiError(`Device ${id} not found`, 404);
+        }
+        const updated = { ...device, ...data };
+        return updated;
+      }
+      throw error;
+    }
+  },
+
+  delete: async (id: number): Promise<void> => {
+    try {
+      return await fetchApi<void>(API_ENDPOINTS.devicesById(id.toString()), {
         method: 'DELETE',
       });
     } catch (error) {
@@ -258,20 +435,54 @@ export const devicesApi = {
   },
 };
 
-// Warehouses API
-export const warehousesApi = {
-  getAll: async (): Promise<string[]> => {
+// Warehouses are included in box data, no separate API needed
+
+// Authentication API
+export const authApi = {
+  async login(credentials: LoginCredentials): Promise<AuthTokens> {
     try {
-      return await fetchApi<string[]>(API_ENDPOINTS.warehouses);
-    } catch (error) {
-      // Fallback to mock data if API fails or mock is enabled
-      if (USE_MOCK_DATA || (error instanceof ApiError && error.status === 0)) {
-        console.log('Using mock data for warehouses');
-        return [...mockWarehouses];
+      const response = await fetch('https://keycloak.arimodu.dev/realms/box-manager/protocol/openid-connect/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'password',
+          client_id: 'bmc',
+          client_secret: 'Vdz7mFsKamCiHfPpHEX5rBYV97FJy0At',
+          username: credentials.username,
+          password: credentials.password,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new ApiError('Login failed', response.status);
       }
-      throw error;
+
+      const tokens: AuthTokens = await response.json();
+      authManager.setTokens(tokens);
+      return tokens;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError('Network error during login', 0, error);
     }
   },
+
+  logout(): void {
+    authManager.clearTokens();
+  },
+
+  isAuthenticated(): boolean {
+    return authManager.isAuthenticated();
+  },
+};
+
+// Update device registration to not require auth
+const devicesApi_create = devicesApi.create;
+devicesApi.create = async (data: DeviceRegisterDto): Promise<DeviceDto> => {
+  return devicesApi_create(data, { requiresAuth: false });
 };
 
 export { ApiError };

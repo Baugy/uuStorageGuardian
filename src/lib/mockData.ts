@@ -1,31 +1,98 @@
-export type BoxStatus = "OK" | "Warning" | "Alarm";
-export type DeviceStatus = "online" | "offline" | "no_data";
+export type BoxStatus = "OK" | "WARNING" | "CRITICAL";
 
-export interface Box {
+export interface WarehouseDto {
   id: string;
   name: string;
-  warehouse: string;
-  tenant: string;
-  currentTemp: number;
-  currentHumidity: number;
-  minTemp: number;
-  maxTemp: number;
-  minHumidity: number;
-  maxHumidity: number;
-  status: BoxStatus;
-  lastMeasurement: Date;
-  description?: string;
+  description: string;
+  location: string;
 }
 
-export interface Device {
-  id: string;
+export interface BoxDto {
+  id: number;
   name: string;
-  type: string;
-  assignedBox?: string;
-  warehouse: string;
-  status: DeviceStatus;
-  batteryLevel: number;
-  lastSignal: Date;
+  description: string;
+  warehouse: WarehouseDto;
+  renterId: string;
+  deviceId: number;
+  temperature: number;
+  humidity: number;
+  status: BoxStatus;
+  lastMeasurementDate: string; // ISO date string
+  lowerHumidityLimit: number;
+  upperHumidityLimit: number;
+  lowerTemperatureLimit: number;
+  upperTemperatureLimit: number;
+}
+
+export interface BoxListDto {
+  id: number;
+  name: string;
+  warehouse: WarehouseDto;
+  temperature: number;
+  humidity: number;
+  status: string;
+  lastMeasurementDate: string; // ISO date string
+}
+
+export interface BoxHistoryDto {
+  temperature: number;
+  humidity: number;
+  status: string;
+  measurementDate: string; // ISO date string
+}
+
+export interface DeviceDto {
+  id: number;
+  name: string;
+  description: string;
+  boxId: number;
+  lastMeasurementDate: string; // ISO date string
+}
+
+export interface DeviceListDto {
+  id: number;
+  name: string;
+  boxId: number;
+  lastMeasurementDate: string; // ISO date string
+}
+
+export interface BoxCreateDto {
+  name: string;
+  description: string;
+  warehouseId: string;
+  renterId: string;
+  lowerHumidityLimit: number;
+  upperHumidityLimit: number;
+  lowerTemperatureLimit: number;
+  upperTemperatureLimit: number;
+}
+
+export interface BoxUpdateDto {
+  name?: string;
+  description?: string;
+  renterId?: string;
+  lowerHumidityLimit?: number;
+  upperHumidityLimit?: number;
+  lowerTemperatureLimit?: number;
+  upperTemperatureLimit?: number;
+}
+
+export interface DeviceRegisterDto {
+  name: string;
+  description: string;
+}
+
+export interface DeviceUpdateDto {
+  name?: string;
+  description?: string;
+  boxId?: number;
+}
+
+export interface MeasurementDto {
+  temperature: number;
+  humidity: number;
+  deviceId: number;
+  timestamp: string; // ISO date string
 }
 
 export interface Measurement {
@@ -36,176 +103,134 @@ export interface Measurement {
   deviceId: string;
 }
 
-export const mockWarehouses = [
-  "Warehouse A",
-  "Warehouse B",
-  "Warehouse C",
+const mockWarehouses: WarehouseDto[] = [
+  { id: "WH-A", name: "Warehouse A", description: "Main warehouse facility", location: "Building A" },
+  { id: "WH-B", name: "Warehouse B", description: "Secondary warehouse", location: "Building B" },
+  { id: "WH-C", name: "Warehouse C", description: "Cold storage facility", location: "Building C" },
 ];
 
-export const mockBoxes: Box[] = [
+export const mockBoxes: BoxListDto[] = [
   {
-    id: "BOX-001",
+    id: 1,
     name: "Cold Storage 1",
-    warehouse: "Warehouse A",
-    tenant: "FreshFood Corp",
-    currentTemp: 4.2,
-    currentHumidity: 65,
-    minTemp: 2,
-    maxTemp: 8,
-    minHumidity: 60,
-    maxHumidity: 80,
+    warehouse: mockWarehouses[0],
+    temperature: 4.2,
+    humidity: 65,
     status: "OK",
-    lastMeasurement: new Date(Date.now() - 5 * 60 * 1000),
-    description: "Primary cold storage unit for perishables",
+    lastMeasurementDate: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   },
   {
-    id: "BOX-002",
+    id: 2,
     name: "Dry Storage 2",
-    warehouse: "Warehouse A",
-    tenant: "DryCo Ltd",
-    currentTemp: 22.5,
-    currentHumidity: 45,
-    minTemp: 18,
-    maxTemp: 25,
-    minHumidity: 40,
-    maxHumidity: 60,
-    status: "Warning",
-    lastMeasurement: new Date(Date.now() - 15 * 60 * 1000),
-    description: "Dry goods storage",
+    warehouse: mockWarehouses[0],
+    temperature: 22.5,
+    humidity: 45,
+    status: "WARNING",
+    lastMeasurementDate: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
   },
   {
-    id: "BOX-003",
+    id: 3,
     name: "Freezer Unit 1",
-    warehouse: "Warehouse B",
-    tenant: "IceCream Inc",
-    currentTemp: -22.1,
-    currentHumidity: 30,
-    minTemp: -25,
-    maxTemp: -18,
-    minHumidity: 20,
-    maxHumidity: 40,
-    status: "Alarm",
-    lastMeasurement: new Date(Date.now() - 2 * 60 * 1000),
-    description: "Frozen goods storage",
+    warehouse: mockWarehouses[1],
+    temperature: -22.1,
+    humidity: 30,
+    status: "CRITICAL",
+    lastMeasurementDate: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
   },
   {
-    id: "BOX-004",
+    id: 4,
     name: "Ambient Storage 1",
-    warehouse: "Warehouse B",
-    tenant: "General Storage",
-    currentTemp: 20.1,
-    currentHumidity: 55,
-    minTemp: 15,
-    maxTemp: 25,
-    minHumidity: 45,
-    maxHumidity: 65,
+    warehouse: mockWarehouses[1],
+    temperature: 20.1,
+    humidity: 55,
     status: "OK",
-    lastMeasurement: new Date(Date.now() - 10 * 60 * 1000),
-    description: "Ambient temperature storage",
+    lastMeasurementDate: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
   },
   {
-    id: "BOX-005",
+    id: 5,
     name: "Cold Storage 2",
-    warehouse: "Warehouse C",
-    tenant: "FreshFood Corp",
-    currentTemp: 5.8,
-    currentHumidity: 70,
-    minTemp: 2,
-    maxTemp: 8,
-    minHumidity: 60,
-    maxHumidity: 80,
+    warehouse: mockWarehouses[2],
+    temperature: 5.8,
+    humidity: 70,
     status: "OK",
-    lastMeasurement: new Date(Date.now() - 3 * 60 * 1000),
-    description: "Secondary cold storage",
+    lastMeasurementDate: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
   },
 ];
 
-export const mockDevices: Device[] = [
+export const mockDevices: DeviceListDto[] = [
   {
-    id: "DEV-TH-001",
+    id: 1,
     name: "Temp & Humidity Sensor A1",
-    type: "Temperature + Humidity",
-    assignedBox: "BOX-001",
-    warehouse: "Warehouse A",
-    status: "online",
-    batteryLevel: 85,
-    lastSignal: new Date(Date.now() - 5 * 60 * 1000),
+    boxId: 1,
+    lastMeasurementDate: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   },
   {
-    id: "DEV-TH-002",
+    id: 2,
     name: "Temp & Humidity Sensor A2",
-    type: "Temperature + Humidity",
-    assignedBox: "BOX-002",
-    warehouse: "Warehouse A",
-    status: "online",
-    batteryLevel: 62,
-    lastSignal: new Date(Date.now() - 15 * 60 * 1000),
+    boxId: 2,
+    lastMeasurementDate: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
   },
   {
-    id: "DEV-TH-003",
+    id: 3,
     name: "Freezer Sensor B1",
-    type: "Temperature + Humidity",
-    assignedBox: "BOX-003",
-    warehouse: "Warehouse B",
-    status: "online",
-    batteryLevel: 45,
-    lastSignal: new Date(Date.now() - 2 * 60 * 1000),
+    boxId: 3,
+    lastMeasurementDate: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
   },
   {
-    id: "DEV-T-004",
+    id: 4,
     name: "Temperature Sensor B2",
-    type: "Temperature",
-    assignedBox: "BOX-004",
-    warehouse: "Warehouse B",
-    status: "online",
-    batteryLevel: 92,
-    lastSignal: new Date(Date.now() - 10 * 60 * 1000),
+    boxId: 4,
+    lastMeasurementDate: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
   },
   {
-    id: "DEV-TH-005",
+    id: 5,
     name: "Sensor C1",
-    type: "Temperature + Humidity",
-    assignedBox: "BOX-005",
-    warehouse: "Warehouse C",
-    status: "online",
-    batteryLevel: 78,
-    lastSignal: new Date(Date.now() - 3 * 60 * 1000),
+    boxId: 5,
+    lastMeasurementDate: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
   },
   {
-    id: "DEV-TH-006",
+    id: 6,
     name: "Backup Sensor A",
-    type: "Temperature + Humidity",
-    warehouse: "Warehouse A",
-    status: "offline",
-    batteryLevel: 15,
-    lastSignal: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    boxId: 0, // Not assigned to any box
+    lastMeasurementDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
 
-export const generateMeasurements = (boxId: string, hours: number = 24): Measurement[] => {
-  const measurements: Measurement[] = [];
-  const box = mockBoxes.find(b => b.id === boxId);
+export const generateMeasurements = (boxId: string, hours: number = 24): BoxHistoryDto[] => {
+  const measurements: BoxHistoryDto[] = [];
+  const box = mockBoxes.find(b => b.id === parseInt(boxId));
   if (!box) return measurements;
 
   const now = Date.now();
   const interval = (hours * 60 * 60 * 1000) / 50; // 50 measurements
 
+  // Use a seeded random function for consistent results
+  const seededRandom = (seed: number) => {
+    const x = Math.sin(seed) * 10000;
+    return x - Math.floor(x);
+  };
+
   for (let i = 0; i < 50; i++) {
     const timestamp = new Date(now - (50 - i) * interval);
-    const temp = box.currentTemp + (Math.random() - 0.5) * 4;
-    const humidity = box.currentHumidity + (Math.random() - 0.5) * 10;
-    
+    // Use timestamp as seed for consistent random values
+    const seed = timestamp.getTime() + parseInt(boxId);
+    const tempVariation = (seededRandom(seed) - 0.5) * 4;
+    const humidityVariation = (seededRandom(seed + 1000) - 0.5) * 10;
+
+    const temp = box.temperature + tempVariation;
+    const humidity = box.humidity + humidityVariation;
+
     let status: BoxStatus = "OK";
-    if (temp < box.minTemp || temp > box.maxTemp || humidity < box.minHumidity || humidity > box.maxHumidity) {
-      status = Math.random() > 0.5 ? "Warning" : "Alarm";
+    // Simple logic to determine status based on current values
+    if (Math.abs(temp - box.temperature) > 2 || Math.abs(humidity - box.humidity) > 10) {
+      status = seededRandom(seed + 2000) > 0.5 ? "WARNING" : "CRITICAL";
     }
 
     measurements.push({
-      timestamp,
       temperature: parseFloat(temp.toFixed(1)),
       humidity: parseFloat(humidity.toFixed(1)),
       status,
-      deviceId: mockDevices.find(d => d.assignedBox === boxId)?.id || "UNKNOWN",
+      measurementDate: timestamp.toISOString(),
     });
   }
 

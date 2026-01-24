@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
-import { boxesApi, devicesApi, warehousesApi } from "@/lib/api/client";
+import { boxesApi, devicesApi } from "@/lib/api/client";
 import { API_BASE_URL, USE_MOCK_DATA } from "@/lib/api/config";
 
 export const ApiStatus = () => {
@@ -23,11 +23,6 @@ export const ApiStatus = () => {
     retry: false,
   });
 
-  const { data: warehouses, isLoading: warehousesLoading, error: warehousesError, refetch: refetchWarehouses } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: () => warehousesApi.getAll(),
-    retry: false,
-  });
 
   const testEndpoint = async (name: string, endpoint: string) => {
     try {
@@ -57,9 +52,8 @@ export const ApiStatus = () => {
   };
 
   const runAllTests = () => {
-    testEndpoint('boxes', '/api/boxes');
-    testEndpoint('devices', '/api/devices');
-    testEndpoint('warehouses', '/api/warehouses');
+    testEndpoint('boxes', '/api/box');
+    testEndpoint('devices', '/api/device');
   };
 
   const getStatusIcon = (loading: boolean, error: any, data: any) => {
@@ -134,21 +128,6 @@ export const ApiStatus = () => {
               </Button>
             </div>
 
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                {getStatusIcon(warehousesLoading, warehousesError, warehouses)}
-                <div>
-                  <p className="font-medium">Warehouses API</p>
-                  <p className="text-sm text-muted-foreground">
-                    {getStatusText(warehousesLoading, warehousesError, warehouses)}
-                    {warehouses && ` (${warehouses.length} warehouses)`}
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => refetchWarehouses()}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
 
           <div className="pt-4 border-t">
@@ -182,7 +161,7 @@ export const ApiStatus = () => {
             </div>
           )}
 
-          {(boxesError || devicesError || warehousesError) && (
+          {(boxesError || devicesError) && (
             <Alert variant="destructive">
               <AlertDescription>
                 <p className="font-medium mb-2">Connection Issues:</p>
@@ -192,9 +171,6 @@ export const ApiStatus = () => {
                 {devicesError && (
                   <p className="text-sm">Devices API: {devicesError instanceof Error ? devicesError.message : 'Unknown error'}</p>
                 )}
-                {warehousesError && (
-                  <p className="text-sm">Warehouses API: {warehousesError instanceof Error ? warehousesError.message : 'Unknown error'}</p>
-                )}
               </AlertDescription>
             </Alert>
           )}
@@ -203,4 +179,6 @@ export const ApiStatus = () => {
     </div>
   );
 };
+
+
 

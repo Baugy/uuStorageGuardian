@@ -43,15 +43,19 @@ const BoxHistory = () => {
 
   const { data: box, isLoading: boxLoading, error: boxError } = useQuery({
     queryKey: ['box', id],
-    queryFn: () => boxesApi.getById(id!),
+    queryFn: () => boxesApi.getById(parseInt(id!)),
     enabled: !!id,
   });
 
   const { data: measurements = [], isLoading: measurementsLoading } = useQuery({
     queryKey: ['box-history', id, timeRange],
-    queryFn: () => boxesApi.getHistory(id!, parseInt(timeRange)),
+    queryFn: () => {
+      const dateTo = new Date();
+      const dateFrom = new Date(dateTo.getTime() - parseInt(timeRange) * 60 * 60 * 1000);
+      return boxesApi.getHistory(parseInt(id!), dateFrom, dateTo);
+    },
     enabled: !!id,
-    refetchInterval: 60000,
+    refetchInterval: 300000, // Refresh every 5 minutes
   });
 
   const formatTimestamp = (date: Date | string) => {
@@ -73,7 +77,7 @@ const BoxHistory = () => {
   };
 
   const chartData = measurements.map((m) => ({
-    time: formatChartTime(m.timestamp),
+    time: formatChartTime(m.measurementDate),
     temperature: m.temperature,
     humidity: m.humidity,
   }));

@@ -45,3 +45,5 @@ Pro rychlý vývoj bez nutnosti mít běžící backend:
 
 Aplikace poběží s mock daty a můžete testovat všechny funkce UI.
 
+
+

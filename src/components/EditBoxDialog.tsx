@@ -12,43 +12,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Box } from "@/lib/mockData";
-import { boxesApi, warehousesApi } from "@/lib/api/client";
+import { BoxDto, BoxUpdateDto } from "@/lib/mockData";
+import { boxesApi } from "@/lib/api/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 interface EditBoxDialogProps {
-  box: Box;
+  box: BoxDto;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export const EditBoxDialog = ({ box, open, onOpenChange }: EditBoxDialogProps) => {
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<BoxUpdateDto>({
     name: box.name,
-    description: box.description || "",
-    warehouse: box.warehouse,
-    minTemp: box.minTemp.toString(),
-    maxTemp: box.maxTemp.toString(),
-    minHumidity: box.minHumidity.toString(),
-    maxHumidity: box.maxHumidity.toString(),
-  });
-
-  const { data: warehouses = [] } = useQuery({
-    queryKey: ['warehouses'],
-    queryFn: () => warehousesApi.getAll(),
+    description: box.description,
+    renterId: box.renterId,
+    lowerHumidityLimit: box.lowerHumidityLimit,
+    upperHumidityLimit: box.upperHumidityLimit,
+    lowerTemperatureLimit: box.lowerTemperatureLimit,
+    upperTemperatureLimit: box.upperTemperatureLimit,
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<Box>) => boxesApi.update(box.id, data),
+    mutationFn: (data: BoxUpdateDto) => boxesApi.update(box.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['box', box.id] });
       queryClient.invalidateQueries({ queryKey: ['boxes'] });
@@ -64,25 +52,23 @@ export const EditBoxDialog = ({ box, open, onOpenChange }: EditBoxDialogProps) =
     if (open) {
       setFormData({
         name: box.name,
-        description: box.description || "",
-        warehouse: box.warehouse,
-        minTemp: box.minTemp.toString(),
-        maxTemp: box.maxTemp.toString(),
-        minHumidity: box.minHumidity.toString(),
-        maxHumidity: box.maxHumidity.toString(),
+        description: box.description,
+        renterId: box.renterId,
+        lowerHumidityLimit: box.lowerHumidityLimit,
+        upperHumidityLimit: box.upperHumidityLimit,
+        lowerTemperatureLimit: box.lowerTemperatureLimit,
+        upperTemperatureLimit: box.upperTemperatureLimit,
       });
     }
   }, [box, open]);
 
   const handleSave = () => {
     updateMutation.mutate({
-      name: formData.name,
-      description: formData.description,
-      warehouse: formData.warehouse,
-      minTemp: parseFloat(formData.minTemp),
-      maxTemp: parseFloat(formData.maxTemp),
-      minHumidity: parseFloat(formData.minHumidity),
-      maxHumidity: parseFloat(formData.maxHumidity),
+      ...formData,
+      lowerHumidityLimit: Number(formData.lowerHumidityLimit),
+      upperHumidityLimit: Number(formData.upperHumidityLimit),
+      lowerTemperatureLimit: Number(formData.lowerTemperatureLimit),
+      upperTemperatureLimit: Number(formData.upperTemperatureLimit),
     });
   };
 
@@ -101,7 +87,7 @@ export const EditBoxDialog = ({ box, open, onOpenChange }: EditBoxDialogProps) =
             <Label htmlFor="name">Box Name</Label>
             <Input
               id="name"
-              value={formData.name}
+              value={formData.name || ""}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
           </div>
@@ -110,66 +96,59 @@ export const EditBoxDialog = ({ box, open, onOpenChange }: EditBoxDialogProps) =
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              value={formData.description}
+              value={formData.description || ""}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
             />
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="warehouse">Warehouse</Label>
-            <Select value={formData.warehouse} onValueChange={(value) => setFormData({ ...formData, warehouse: value })}>
-              <SelectTrigger id="warehouse">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map((warehouse) => (
-                  <SelectItem key={warehouse} value={warehouse}>
-                    {warehouse}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="renterId">Renter ID</Label>
+            <Input
+              id="renterId"
+              value={formData.renterId || ""}
+              onChange={(e) => setFormData({ ...formData, renterId: e.target.value })}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="minTemp">Min Temperature (°C)</Label>
+              <Label htmlFor="lowerTemperatureLimit">Min Temperature (°C)</Label>
               <Input
-                id="minTemp"
+                id="lowerTemperatureLimit"
                 type="number"
-                value={formData.minTemp}
-                onChange={(e) => setFormData({ ...formData, minTemp: e.target.value })}
+                value={formData.lowerTemperatureLimit || ""}
+                onChange={(e) => setFormData({ ...formData, lowerTemperatureLimit: parseFloat(e.target.value) || 0 })}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="maxTemp">Max Temperature (°C)</Label>
+              <Label htmlFor="upperTemperatureLimit">Max Temperature (°C)</Label>
               <Input
-                id="maxTemp"
+                id="upperTemperatureLimit"
                 type="number"
-                value={formData.maxTemp}
-                onChange={(e) => setFormData({ ...formData, maxTemp: e.target.value })}
+                value={formData.upperTemperatureLimit || ""}
+                onChange={(e) => setFormData({ ...formData, upperTemperatureLimit: parseFloat(e.target.value) || 0 })}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="minHumidity">Min Humidity (%)</Label>
+              <Label htmlFor="lowerHumidityLimit">Min Humidity (%)</Label>
               <Input
-                id="minHumidity"
+                id="lowerHumidityLimit"
                 type="number"
-                value={formData.minHumidity}
-                onChange={(e) => setFormData({ ...formData, minHumidity: e.target.value })}
+                value={formData.lowerHumidityLimit || ""}
+                onChange={(e) => setFormData({ ...formData, lowerHumidityLimit: parseFloat(e.target.value) || 0 })}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="maxHumidity">Max Humidity (%)</Label>
+              <Label htmlFor="upperHumidityLimit">Max Humidity (%)</Label>
               <Input
-                id="maxHumidity"
+                id="upperHumidityLimit"
                 type="number"
-                value={formData.maxHumidity}
-                onChange={(e) => setFormData({ ...formData, maxHumidity: e.target.value })}
+                value={formData.upperHumidityLimit || ""}
+                onChange={(e) => setFormData({ ...formData, upperHumidityLimit: parseFloat(e.target.value) || 0 })}
               />
             </div>
           </div>

@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { devicesApi, boxesApi } from "@/lib/api/client";
+import { devicesApi } from "@/lib/api/client";
+import { DeviceRegisterDto } from "@/lib/mockData";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -30,31 +31,20 @@ interface RegisterDeviceDialogProps {
 
 export const RegisterDeviceDialog = ({ open, onOpenChange }: RegisterDeviceDialogProps) => {
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState({
-    deviceId: "",
+  const [formData, setFormData] = useState<DeviceRegisterDto>({
     name: "",
-    type: "",
-    assignedBox: "",
-    note: "",
-  });
-
-  const { data: boxes = [] } = useQuery({
-    queryKey: ['boxes'],
-    queryFn: () => boxesApi.getAll(),
+    description: "",
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => devicesApi.create(data),
+    mutationFn: (data: DeviceRegisterDto) => devicesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       toast.success("Device registered successfully");
       onOpenChange(false);
       setFormData({
-        deviceId: "",
         name: "",
-        type: "",
-        assignedBox: "",
-        note: "",
+        description: "",
       });
     },
     onError: (error: any) => {
@@ -87,23 +77,11 @@ export const RegisterDeviceDialog = ({ open, onOpenChange }: RegisterDeviceDialo
 
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="deviceId">
-              Device ID <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="deviceId"
-              placeholder="DEV-TH-001"
-              value={formData.deviceId}
-              onChange={(e) => setFormData({ ...formData, deviceId: e.target.value })}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="deviceName">
+            <Label htmlFor="name">
               Device Name <span className="text-destructive">*</span>
             </Label>
             <Input
-              id="deviceName"
+              id="name"
               placeholder="Temperature & Humidity Sensor"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -111,52 +89,12 @@ export const RegisterDeviceDialog = ({ open, onOpenChange }: RegisterDeviceDialo
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="deviceType">
-              Device Type <span className="text-destructive">*</span>
-            </Label>
-            <Select
-              value={formData.type}
-              onValueChange={(value) => setFormData({ ...formData, type: value })}
-            >
-              <SelectTrigger id="deviceType">
-                <SelectValue placeholder="Select device type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Temperature">Temperature Only</SelectItem>
-                <SelectItem value="Temperature + Humidity">
-                  Temperature + Humidity
-                </SelectItem>
-                <SelectItem value="Humidity">Humidity Only</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="assignedBox">Assigned Box (Optional)</Label>
-            <Select
-              value={formData.assignedBox}
-              onValueChange={(value) => setFormData({ ...formData, assignedBox: value })}
-            >
-              <SelectTrigger id="assignedBox">
-                <SelectValue placeholder="Select a box" />
-              </SelectTrigger>
-              <SelectContent>
-                {boxes.map((box) => (
-                  <SelectItem key={box.id} value={box.id}>
-                    {box.id} - {box.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="note">Note (Optional)</Label>
+            <Label htmlFor="description">Description</Label>
             <Textarea
-              id="note"
-              placeholder="Additional notes about this device..."
-              value={formData.note}
-              onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+              id="description"
+              placeholder="Enter device description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
             />
           </div>

@@ -2,16 +2,8 @@ import { useState } from "react";
 import { Plus, Search, Trash2, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -21,20 +13,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { devicesApi } from "@/lib/api/client";
-import { DeviceStatus } from "@/lib/mockData";
+import { DeviceListDto } from "@/lib/mockData";
 import { RegisterDeviceDialog } from "@/components/RegisterDeviceDialog";
 import { RemoveDeviceDialog } from "@/components/RemoveDeviceDialog";
 import { toast } from "sonner";
 
 const DeviceList = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
-  const [removeDialogDevice, setRemoveDialogDevice] = useState<string | null>(null);
+  const [removeDialogDevice, setRemoveDialogDevice] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   const { data: devices = [], isLoading, error } = useQuery({
@@ -43,11 +32,10 @@ const DeviceList = () => {
     refetchInterval: 30000,
   });
 
-  const filteredDevices = devices.filter((device) => {
+  const filteredDevices = devices.filter((device: DeviceListDto) => {
     const matchesSearch =
-      device.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      device.id.toString().includes(searchQuery.toLowerCase()) ||
       device.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = typeFilter === "all" || device.type === typeFilter;
     const matchesStatus = statusFilter === "all" || device.status === statusFilter;
     return matchesSearch && matchesType && matchesStatus;
   });
@@ -62,14 +50,8 @@ const DeviceList = () => {
     }).format(dateObj);
   };
 
-  const getBatteryColor = (level: number) => {
-    if (level > 60) return "bg-success";
-    if (level > 30) return "bg-warning";
-    return "bg-destructive";
-  };
-
   const deleteDeviceMutation = useMutation({
-    mutationFn: (deviceId: string) => devicesApi.delete(deviceId),
+    mutationFn: (deviceId: number) => devicesApi.delete(deviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       toast.success("Device removed successfully");
@@ -80,7 +62,7 @@ const DeviceList = () => {
     },
   });
 
-  const handleRemoveDevice = (deviceId: string) => {
+  const handleRemoveDevice = (deviceId: number) => {
     deleteDeviceMutation.mutate(deviceId);
   };
 
@@ -113,126 +95,92 @@ const DeviceList = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto py-6 sm:py-8 lg:py-10 px-4 sm:px-6 lg:px-8">
         <Breadcrumb items={[{ label: "Home", href: "/" }, { label: "Devices" }]} />
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Device List</h1>
-            <p className="text-muted-foreground">Manage monitoring devices</p>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-foreground mb-2 bg-gradient-to-r from-foreground to-primary bg-clip-text text-transparent">Device List</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">Manage monitoring devices</p>
           </div>
-          <Button onClick={() => setRegisterDialogOpen(true)}>
+          <Button onClick={() => setRegisterDialogOpen(true)} className="w-full sm:w-auto shadow-depth-sm hover:shadow-depth-md transition-all">
             <Plus className="h-4 w-4 mr-2" />
             Register Device
           </Button>
         </div>
 
-        <Card className="p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by device ID or name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Device Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Device Types</SelectItem>
-                <SelectItem value="Temperature">Temperature Only</SelectItem>
-                <SelectItem value="Temperature + Humidity">Temperature + Humidity</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="online">Online</SelectItem>
-                <SelectItem value="offline">Offline</SelectItem>
-                <SelectItem value="no_data">No Data</SelectItem>
-              </SelectContent>
-            </Select>
+        <Card className="p-4 sm:p-6 mb-4 sm:mb-6 border-border/50 shadow-depth-md">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by device ID or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 border-border/50 bg-card/50"
+            />
           </div>
         </Card>
 
-        <Card>
+        <Card className="border-border/50 shadow-depth-md overflow-hidden">
           {isLoading ? (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Device ID</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Assigned Box</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Battery</TableHead>
-                  <TableHead>Last Signal</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDevices.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      No devices found
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50">
+                    <TableHead className="hidden sm:table-cell">Device ID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Assigned Box</TableHead>
+                    <TableHead className="hidden lg:table-cell">Last Measurement</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredDevices.map((device) => (
-                <TableRow key={device.id}>
-                  <TableCell className="font-mono font-medium">{device.id}</TableCell>
-                  <TableCell className="font-medium">{device.name}</TableCell>
-                  <TableCell>
-                    {device.assignedBox ? (
-                      <span className="font-mono text-sm">{device.assignedBox}</span>
+                </TableHeader>
+                <TableBody>
+                  {filteredDevices.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        No devices found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredDevices.map((device: DeviceListDto) => (
+                <TableRow key={device.id} className="border-border/30 hover:bg-card/50 transition-colors">
+                  <TableCell className="font-mono font-medium hidden sm:table-cell">{device.id}</TableCell>
+                  <TableCell className="font-medium">
+                    <div>
+                      <div className="sm:hidden font-mono text-xs text-muted-foreground mb-1">{device.id}</div>
+                      {device.name}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {device.boxId ? (
+                      <span className="font-mono text-sm">Box {device.boxId}</span>
                     ) : (
                       <span className="text-muted-foreground text-sm">Not assigned</span>
                     )}
                   </TableCell>
-                  <TableCell>{device.warehouse}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={device.status} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Progress
-                        value={device.batteryLevel}
-                        className="w-20"
-                        indicatorClassName={getBatteryColor(device.batteryLevel)}
-                      />
-                      <span className="text-sm text-muted-foreground">
-                        {device.batteryLevel}%
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatTimestamp(device.lastSignal)}
+                  <TableCell className="text-muted-foreground hidden lg:table-cell">
+                    {new Date(device.lastMeasurementDate).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setRemoveDialogDevice(device.id)}
+                      className="hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </TableCell>
                 </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </Card>
 
