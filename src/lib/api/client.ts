@@ -470,6 +470,14 @@ export const authApi = {
     }
   },
 
+  async autoLogin(): Promise<AuthTokens> {
+    // Automatically login with test credentials
+    return this.login({
+      username: 'test',
+      password: 'test',
+    });
+  },
+
   logout(): void {
     authManager.clearTokens();
   },

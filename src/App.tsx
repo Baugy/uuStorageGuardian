@@ -5,9 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Loader2 } from "lucide-react";
 import { authApi } from "@/lib/api/client";
 import { LoginDialog } from "@/components/LoginDialog";
+import { toast } from "sonner";
 import Index from "./pages/Index";
 import BoxList from "./pages/BoxList";
 import BoxDetail from "./pages/BoxDetail";
@@ -20,10 +21,33 @@ const queryClient = new QueryClient();
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const [isAutoLoggingIn, setIsAutoLoggingIn] = useState(false);
 
   useEffect(() => {
-    // Check authentication status on app load
-    setIsAuthenticated(authApi.isAuthenticated());
+    // Check if already authenticated
+    if (authApi.isAuthenticated()) {
+      setIsAuthenticated(true);
+      return;
+    }
+
+    // Attempt automatic login with test credentials
+    const performAutoLogin = async () => {
+      setIsAutoLoggingIn(true);
+      try {
+        await authApi.autoLogin();
+        setIsAuthenticated(true);
+        toast.success("Automatically logged in with test account");
+      } catch (error) {
+        console.error('Auto-login failed:', error);
+        toast.error("Auto-login failed. Please try manual login.");
+        // Fall back to showing login dialog
+        setLoginDialogOpen(true);
+      } finally {
+        setIsAutoLoggingIn(false);
+      }
+    };
+
+    performAutoLogin();
   }, []);
 
   const handleLoginSuccess = () => {
@@ -48,7 +72,13 @@ const App = () => {
               {isAuthenticated && (
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <User className="h-4 w-4" />
-                  Authenticated
+                  Authenticated (Test User)
+                </div>
+              )}
+              {isAutoLoggingIn && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Auto-logging in...
                 </div>
               )}
             </div>
@@ -59,11 +89,11 @@ const App = () => {
                   <LogOut className="h-4 w-4 mr-2" />
                   Logout
                 </Button>
-              ) : (
+              ) : !isAutoLoggingIn ? (
                 <Button size="sm" onClick={() => setLoginDialogOpen(true)}>
-                  Login
+                  Manual Login
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
