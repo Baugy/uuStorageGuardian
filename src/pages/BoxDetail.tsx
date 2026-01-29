@@ -20,7 +20,6 @@ const BoxDetail = () => {
     queryKey: ['box', id],
     queryFn: () => boxesApi.getById(parseInt(id!)),
     enabled: !!id,
-    refetchInterval: 30000,
   });
 
   const { data: recentMeasurements = [] } = useQuery({
@@ -121,22 +120,22 @@ const BoxDetail = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Warehouse</p>
-                <p>{box.warehouse}</p>
+                <p>{box.warehouse.name}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Tenant</p>
-                <p>{box.tenant}</p>
+                <p className="text-sm text-muted-foreground mb-1">Renter ID</p>
+                <p>{box.renterId}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Temperature Range</p>
                 <p>
-                  {box.minTemp}°C – {box.maxTemp}°C
+                  {box.lowerTemperatureLimit}°C – {box.upperTemperatureLimit}°C
                 </p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Humidity Range</p>
                 <p>
-                  {box.minHumidity}% – {box.maxHumidity}%
+                  {box.lowerHumidityLimit}% – {box.upperHumidityLimit}%
                 </p>
               </div>
               {box.description && (
@@ -157,14 +156,14 @@ const BoxDetail = () => {
                 <div className="text-center p-4 sm:p-6 rounded-lg bg-primary/10 border border-primary/30 shadow-depth-sm">
                   <Thermometer className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-primary" />
                   <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-                    {box.currentTemp.toFixed(1)}°C
+                    {box.temperature.toFixed(1)}°C
                   </p>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1">Temperature</p>
                 </div>
                 <div className="text-center p-4 sm:p-6 rounded-lg bg-primary/10 border border-primary/30 shadow-depth-sm">
                   <Droplet className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 text-primary" />
                   <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground">
-                    {box.currentHumidity.toFixed(1)}%
+                    {box.humidity.toFixed(1)}%
                   </p>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1">Humidity</p>
                 </div>
@@ -176,7 +175,7 @@ const BoxDetail = () => {
                 </div>
                 <div className="text-left sm:text-right">
                   <p className="text-sm text-muted-foreground mb-1">Last Measurement</p>
-                  <p className="text-sm font-medium">{formatTimestamp(box.lastMeasurement)}</p>
+                  <p className="text-sm font-medium">{formatTimestamp(box.lastMeasurementDate)}</p>
                 </div>
               </div>
             </CardContent>

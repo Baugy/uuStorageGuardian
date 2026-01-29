@@ -22,6 +22,7 @@ import { toast } from "sonner";
 
 const DeviceList = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const [removeDialogDevice, setRemoveDialogDevice] = useState<number | null>(null);
   const queryClient = useQueryClient();
@@ -29,7 +30,6 @@ const DeviceList = () => {
   const { data: devices = [], isLoading, error } = useQuery({
     queryKey: ['devices'],
     queryFn: () => devicesApi.getAll(),
-    refetchInterval: 30000,
   });
 
   const filteredDevices = devices.filter((device: DeviceListDto) => {
@@ -37,7 +37,7 @@ const DeviceList = () => {
       device.id.toString().includes(searchQuery.toLowerCase()) ||
       device.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || device.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
 
   const formatTimestamp = (date: Date | string) => {

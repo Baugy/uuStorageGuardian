@@ -5,9 +5,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Loader2 } from "lucide-react";
+import { LogOut, User, Loader2, UserCog } from "lucide-react";
 import { authApi } from "@/lib/api/client";
 import { LoginDialog } from "@/components/LoginDialog";
+import { AUTO_LOGIN } from "@/lib/api/config";
 import { toast } from "sonner";
 import Index from "./pages/Index";
 import BoxList from "./pages/BoxList";
@@ -16,7 +17,22 @@ import BoxHistory from "./pages/BoxHistory";
 import DeviceList from "./pages/DeviceList";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error) => {
+        // Don't retry on 401/403 auth errors
+        if (error instanceof Error && 'status' in error) {
+          const status = (error as any).status;
+          if (status === 401 || status === 403) return false;
+        }
+        return failureCount < 2;
+      },
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -30,24 +46,27 @@ const App = () => {
       return;
     }
 
-    // Attempt automatic login with test credentials
-    const performAutoLogin = async () => {
-      setIsAutoLoggingIn(true);
-      try {
-        await authApi.autoLogin();
-        setIsAuthenticated(true);
-        toast.success("Automatically logged in with test account");
-      } catch (error) {
-        console.error('Auto-login failed:', error);
-        toast.error("Auto-login failed. Please try manual login.");
-        // Fall back to showing login dialog
-        setLoginDialogOpen(true);
-      } finally {
-        setIsAutoLoggingIn(false);
-      }
-    };
-
-    performAutoLogin();
+    // Only auto-login if enabled and credentials are provided
+    if (AUTO_LOGIN.enabled && AUTO_LOGIN.username && AUTO_LOGIN.password) {
+      const performAutoLogin = async () => {
+        setIsAutoLoggingIn(true);
+        try {
+          await authApi.autoLogin();
+          setIsAuthenticated(true);
+          toast.success("Automatically logged in with test account");
+        } catch (error) {
+          console.error('Auto-login failed:', error);
+          toast.error("Auto-login failed. Please try manual login.");
+          setLoginDialogOpen(true);
+        } finally {
+          setIsAutoLoggingIn(false);
+        }
+      };
+      performAutoLogin();
+    } else {
+      // No auto-login, show login dialog
+      setLoginDialogOpen(true);
+    }
   }, []);
 
   const handleLoginSuccess = () => {
@@ -85,10 +104,16 @@ const App = () => {
 
             <div className="flex items-center gap-2">
               {isAuthenticated ? (
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </Button>
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => setLoginDialogOpen(true)}>
+                    <UserCog className="h-4 w-4 mr-2" />
+                    Switch Account
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleLogout}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </>
               ) : !isAutoLoggingIn ? (
                 <Button size="sm" onClick={() => setLoginDialogOpen(true)}>
                   Manual Login

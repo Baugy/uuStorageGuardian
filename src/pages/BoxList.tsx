@@ -175,14 +175,14 @@ const BoxList = () => {
                         {box.name}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{box.warehouse}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{box.currentTemp.toFixed(1)}°C</TableCell>
-                    <TableCell className="hidden lg:table-cell">{box.currentHumidity.toFixed(1)}%</TableCell>
+                    <TableCell className="hidden md:table-cell">{box.warehouse.name}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{box.temperature.toFixed(1)}°C</TableCell>
+                    <TableCell className="hidden lg:table-cell">{box.humidity.toFixed(1)}%</TableCell>
                     <TableCell>
                       <StatusBadge status={box.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground hidden xl:table-cell">
-                      {formatTimestamp(box.lastMeasurement)}
+                      {formatTimestamp(box.lastMeasurementDate)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1 sm:gap-2">

@@ -5,28 +5,39 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
-import { boxesApi, devicesApi } from "@/lib/api/client";
+import { boxesApi, devicesApi, authManager } from "@/lib/api/client";
 import { API_BASE_URL, USE_MOCK_DATA } from "@/lib/api/config";
 
 export const ApiStatus = () => {
   const [testResults, setTestResults] = useState<Record<string, any>>({});
 
   const { data: boxes, isLoading: boxesLoading, error: boxesError, refetch: refetchBoxes } = useQuery({
-    queryKey: ['boxes'],
+    queryKey: ['api-status', 'boxes'],
     queryFn: () => boxesApi.getAll(),
+    enabled: false,
     retry: false,
+    staleTime: Infinity,
   });
 
   const { data: devices, isLoading: devicesLoading, error: devicesError, refetch: refetchDevices } = useQuery({
-    queryKey: ['devices'],
+    queryKey: ['api-status', 'devices'],
     queryFn: () => devicesApi.getAll(),
+    enabled: false,
     retry: false,
+    staleTime: Infinity,
   });
 
 
   const testEndpoint = async (name: string, endpoint: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      const token = authManager.getAccessToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
       const data = await response.json().catch(() => ({ message: 'No JSON response' }));
       
       setTestResults(prev => ({

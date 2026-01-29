@@ -13,13 +13,11 @@ const Index = () => {
   const { data: boxes = [], isLoading: boxesLoading, error: boxesError } = useQuery({
     queryKey: ['boxes'],
     queryFn: () => boxesApi.getAll(),
-    refetchInterval: 30000,
   });
 
   const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useQuery({
     queryKey: ['devices'],
     queryFn: () => devicesApi.getAll(),
-    refetchInterval: 30000,
   });
 
   const okBoxes = boxes.filter((b) => b.status === "OK").length;
