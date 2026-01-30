@@ -1,0 +1,9 @@
+# Start Backend (run in first terminal window):
+cd C:\Users\Lukas\Downloads\storage-guardian-main\box-manager-core
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.9.10-hotspot"
+$env:Path = "$env:JAVA_HOME\bin;$env:Path"
+.\mvnw.cmd spring-boot:run
+
+# Start Frontend (run in second terminal window):
+cd C:\Users\Lukas\Downloads\storage-guardian-main\storage-guardian-main
+npm run dev

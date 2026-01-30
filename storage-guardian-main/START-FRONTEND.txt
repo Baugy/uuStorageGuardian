@@ -1,0 +1,7 @@
+# Copy and paste these commands one by one, or use the .ps1 script
+
+# Step 1: Navigate to frontend directory
+cd C:\Users\Lukas\Downloads\storage-guardian-main\storage-guardian-main
+
+# Step 2: Start frontend
+npm run dev
