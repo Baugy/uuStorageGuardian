@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+target/
+.mvn/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Build outputs
+dist/
+build/
+*.jar
+!mvnw
+!mvnw.cmd
+
+# Database data (keep structure, ignore data)
+box-manager-core/docker/postgre/postgres-data/
+box-manager-core/docker/influx/influxdb3-data/
+
+# InfluxDB data directory (contains actual data)
+box-manager-core/docker/influx/influxdb3-data/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+backup.sql
+
+# Java
+*.class
+*.iml
+
+# Frontend
+.vite/
+.cache/
