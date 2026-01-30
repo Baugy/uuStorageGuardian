@@ -1,0 +1,18 @@
+version: '3.7'
+
+services:
+  postgresql:
+    image: postgres:17.7
+    environment:
+      - TZ=Europe/Bratislava
+      - POSTGRES_USER=bmc
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=bmc
+    ports:
+      - "5432:5432"
+    volumes:
+      - 'postgres_data:/var/lib/postgresql/data'
+      - './cnf/postgresql.conf:/etc/postgresql/postgresql.conf'
+volumes:
+  postgres_data:
+    driver: local

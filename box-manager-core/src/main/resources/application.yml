@@ -1,0 +1,47 @@
+server:
+    port: 8082
+spring:
+  application:
+    name: box-manager-core
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bmc
+    username: bmc
+    password: pass
+  web:
+    error:
+      include-stacktrace: never
+application:
+  security:
+    basic:
+      username: Iot_Device
+      password: fnwbL1uv0SAj
+    oauth2:
+        jwt:
+            issuer-uri: https://keycloak.arimodu.dev/realms/box-manager
+            jwk-set-uri: https://keycloak.arimodu.dev/realms/box-manager/protocol/openid-connect/certs
+            algo: RS256
+            roles-claim: resource_access
+  influx:
+    url: http://localhost:8181
+    database: bmc
+    organization: bmc-org
+    token: bmc-token
+  cors:
+    allowed-origins:
+      - "http://localhost:3000"
+      - "http://localhost:5173"
+      - "http://localhost:8080"
+      - "https://storage-guardian.netlify.app"
+    allowed-methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+      - "PATCH"
+    allowed-headers:
+      - "Content-Type"
+      - "Authorization"
+      - "Accept"
+      - "Origin"
+      - "X-Requested-With"
